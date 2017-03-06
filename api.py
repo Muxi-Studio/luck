@@ -11,6 +11,9 @@ def require_info_login(f):
     @functools.wraps(f)
     async def decorated_function(request, *args, **kwargs):
         # 获取POST的数据
+        if request.method != 'POST':
+            return Response(body = b'{}',
+            content_type = 'application/json', status = 405)
         json_data = await request.json()
         sid = json_data.get('sid')
         pwd = json_data.get('pwd')
