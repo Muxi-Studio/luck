@@ -13,8 +13,8 @@ console_api = "http://console.ccnu.edu.cn/ecard/getTrans?userId=%s&days=90&start
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 5.1; rv:2.0b9pre) Gecko/20110105 Firefox/4.0b9pre'}
 
 async def redis_conn():
-    redis = await aioredis.create_redis(('localhost', 6379))
-    redis.slaveof(host='192.168.99.100', port=7389)
+    redis = await aioredis.create_redis(('119.23.124.174', 7384))
+    redis.slaveof(host='119.23.124.174', port=7389)
     ips = await redis.smembers('ips')
     redis.close()
     await redis.wait_closed()
@@ -24,7 +24,6 @@ async def _info_login(session, payload, ip, sid, pwd):
     async with session.post(info_login_url, data=payload,
                             proxy=ip, timeout=4) as resp:
         resp_text = await resp.text()
-        print(resp_text)
         if resp_text.split('"')[1] == 'index_jg.jsp':
             _cookie_jar = session._cookie_jar
             return _cookie_jar, sid, ip
@@ -37,8 +36,7 @@ async def info_login(sid, pwd):
     ips = await redis_conn()
     while True: # 错误重试
         ip = 'http://' + random.choice(ips).decode()
-        ip = None
-        print(ip)
+        # ip = None
         async with aiohttp.ClientSession(headers=headers) as session:
             try:
                 s, sid, ip = await _info_login(session, payload, ip, sid, pwd)
@@ -57,7 +55,6 @@ async def _lib_login(payload, ip):
         return r.content
 
 async def lib_login(sid, pwd, ip):
-    print(sid)
     payload = {'number': sid, 'passwd': '123456', 'select': 'cert_no'}
     # payload = aiohttp.FormData(payload)
     # async with aiohttp.ClientSession(headers=headers) as session:
