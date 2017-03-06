@@ -5,3 +5,9 @@ luck:
     command: gunicorn wsgi:app -k aiohttp.worker.GunicornWebWorker -b 0.0.0.0:8080 --log-level DEBUG
     ports:
         - "5555:8080"
+
+redis:
+    image: redis
+    command: redis-server --port 6384
+    ports:
+        - "7384:6384"

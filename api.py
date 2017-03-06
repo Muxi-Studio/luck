@@ -31,7 +31,7 @@ def require_info_login(f):
 @require_info_login
 async def login_api(request, s, sid, pwd, ip):
     name = await get_name(sid)
-    gender = await get_gender(sid, pwd)
+    gender = await get_gender(sid, pwd, ip)
     if gender is None:
         gender = 0
     info = {'name': name, 'sno': sid}

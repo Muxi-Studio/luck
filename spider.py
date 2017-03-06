@@ -12,18 +12,19 @@ console_api = "http://console.ccnu.edu.cn/ecard/getTrans?userId=%s&days=90&start
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 5.1; rv:2.0b9pre) Gecko/20110105 Firefox/4.0b9pre'}
 
-# async def redis_conn():
-#     redis = await aioredis.create_redis(('localhost', 6379))
-#     redis.slaveof(host='192.168.99.100', port=7389)
-#     ips = await redis.smembers('ips')
-#     redis.close()
-#     await redis.wait_closed()
-#     return ips
+async def redis_conn():
+    redis = await aioredis.create_redis(('localhost', 6379))
+    redis.slaveof(host='192.168.99.100', port=7389)
+    ips = await redis.smembers('ips')
+    redis.close()
+    await redis.wait_closed()
+    return ips
 
 async def _info_login(session, payload, ip, sid, pwd):
     async with session.post(info_login_url, data=payload,
                             proxy=ip, timeout=4) as resp:
         resp_text = await resp.text()
+        print(resp_text)
         if resp_text.split('"')[1] == 'index_jg.jsp':
             _cookie_jar = session._cookie_jar
             return _cookie_jar, sid, ip
@@ -33,10 +34,11 @@ async def _info_login(session, payload, ip, sid, pwd):
 async def info_login(sid, pwd):
     _cookie_jar = None
     payload = {'userName': sid, 'userPass': pwd}
-    # ips = await redis_conn() # 每次请求都会调用
+    ips = await redis_conn()
     while True: # 错误重试
-        # ip = random.choice(ips).decode()
+        ip = 'http://' + random.choice(ips).decode()
         ip = None
+        print(ip)
         async with aiohttp.ClientSession(headers=headers) as session:
             try:
                 s, sid, ip = await _info_login(session, payload, ip, sid, pwd)
@@ -44,17 +46,17 @@ async def info_login(sid, pwd):
             except Exception as e:
                 pass
 
-async def _lib_login(payload):
+async def _lib_login(payload, ip):
     # blocking... aiohttp 就是一个shit 不得不用requests
     s = requests.Session() 
-    s.post(lib_login_url, payload, headers=headers)
+    s.post(lib_login_url, payload, headers=headers, proxies={'http': ip})
     r = s.get(lib_me_url)
     if '123456'.encode() in r.content:
         return None
     else:
         return r.content
 
-async def lib_login(sid, pwd):
+async def lib_login(sid, pwd, ip):
     print(sid)
     payload = {'number': sid, 'passwd': '123456', 'select': 'cert_no'}
     # payload = aiohttp.FormData(payload)
@@ -64,9 +66,11 @@ async def lib_login(sid, pwd):
     #         async with session.get(lib_me_url) as resp:
     #             resp_text = await resp.text()
     #             if '123456' in resp_text:
+    #                 print('shit')
     #                 return None
+    #             print('ok')
     #             return resp_text
-    rv = await _lib_login(payload)
+    rv = await _lib_login(payload, ip)
     return rv
     
 async def get_name(sid):
@@ -76,9 +80,9 @@ async def get_name(sid):
             json_data = await resp.json()
             return json_data[0]['userName']
 
-async def get_gender(sid, pwd):
+async def get_gender(sid, pwd, ip):
     # 假装模拟登录图书馆, 获取性别
-    resp_text = await lib_login(sid, pwd)
+    resp_text = await lib_login(sid, pwd, ip)
     if resp_text:
         # 获取性别
         soup = BeautifulSoup(resp_text, 'lxml')
